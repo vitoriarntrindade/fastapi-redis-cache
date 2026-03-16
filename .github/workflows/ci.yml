@@ -1,12 +1,12 @@
 # Pipeline de CI executado em todo push e pull request para a branch main.
 #
 # Etapas:
-#   1. lint    — verifica estilo e imports com Ruff
+#   1. lint      — verifica estilo e imports com Ruff
 #   2. typecheck — valida tipagem estática com MyPy
-#   3. test    — executa a suíte de testes com Pytest (Redis real via service container)
+#   3. test      — executa a suíte de testes com Pytest (Redis real via service container)
 #
-# O Redis é iniciado como service container do GitHub Actions para que os
-# testes de integração futuros possam usar um Redis real se necessário.
+# O Redis é iniciado como service container para que testes de integração
+# futuros possam usá-lo sem necessidade de infraestrutura adicional.
 # Os testes unitários atuais usam mocks e não dependem do Redis real.
 
 name: CI
@@ -17,19 +17,28 @@ on:
   pull_request:
     branches: [main]
 
+# Princípio do menor privilégio: CI puro não precisa escrever no repositório.
+permissions:
+  contents: read
+
+# Cancela execuções antigas da mesma branch ao receber novos pushes,
+# evitando desperdício de minutos de runner em commits já superados.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint (Ruff)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
       - name: Instalar uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "latest"
+        uses: astral-sh/setup-uv@v7
 
       - name: Instalar dependências de desenvolvimento
         run: uv sync --frozen
@@ -43,15 +52,14 @@ jobs:
   typecheck:
     name: Tipagem (MyPy)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
       - name: Instalar uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "latest"
+        uses: astral-sh/setup-uv@v7
 
       - name: Instalar dependências de desenvolvimento
         run: uv sync --frozen
@@ -62,6 +70,7 @@ jobs:
   test:
     name: Testes (Pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [lint, typecheck]
 
     services:
@@ -80,9 +89,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Instalar uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "latest"
+        uses: astral-sh/setup-uv@v7
 
       - name: Instalar dependências de desenvolvimento
         run: uv sync --frozen
@@ -92,3 +99,4 @@ jobs:
         env:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+
