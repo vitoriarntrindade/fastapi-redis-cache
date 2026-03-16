@@ -47,6 +47,7 @@ def test_app(mock_redis: AsyncMock) -> Generator[FastAPI, None, None]:
     `app.state.redis` (populado pelo lifespan, que não executa em testes) não
     seja necessário, mantendo os testes de rota totalmente isolados.
     """
+
     async def _noop_rate_limit() -> None:
         pass
 
